@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SAT_HOME=/sharefs/cogview-new python cogview2_text2image.py \
+SAT_HOME=/dev/shm/sharefs python cogview2_text2image.py \
        --mode inference \
        --fp16 \
        --input-source input.txt \

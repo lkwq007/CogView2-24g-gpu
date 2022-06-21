@@ -1,3 +1,15 @@
+# CogView2-24g-gpu
+
+
+Inelegant hack for GPUs with 24G vRAM. 
+Tested with RTX3090 for full stages (text-to-image + SR pipeline).
+
+*"Cat drinking coffee"*:
+
+![cat-drinking-coffee](assets/cat-coffee.jpeg)
+
+---
+
 <p align="center">
     <img src="assets/logo2.png"/>
 </p>
@@ -8,7 +20,7 @@
 CogView2 is a hierarchical transformer (6B-9B-9B parameters) for text-to-image generation in general domain. This implementation is based on the [SwissArmyTransformer](https://github.com/THUDM/SwissArmyTransformer) library (v0.2).
 
 * **Read** our paper [CogView2: Faster and Better Text-to-Image Generation via Hierarchical Transformers](https://arxiv.org/abs/2204.14217) on ArXiv for a formal introduction. The *LoPAR* accelarate the generation and *CogLM* enables the model for bidirectional completion.
-* **Run** our pretrained models from text-to-image generation or text-guided completion! Please use A100 GPU.
+* **Run** our pretrained models from text-to-image generation or text-guided completion! ~~Please use A100 GPU.~~
 * **Cite** our paper if you find our work is helpful~ 
 ```
 @article{ding2022cogview2,

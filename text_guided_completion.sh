@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SAT_HOME=/sharefs/cogview-new python cogview2_completion.py \
+SAT_HOME=/dev/shm/sharefs python cogview2_completion.py \
        --mode inference \
        --fp16 \
        --input-source input_comp.txt \
