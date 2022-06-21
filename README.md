@@ -3,9 +3,9 @@
 
 Inelegant hack for GPUs with 24GB vRAM. 
 
-- [x] single gpu with `torch.device("cpu")` as swap (slower but more accessible)
+- [x] single-gpu with `torch.device("cpu")` as swap (run with `--single-gpu`, slower but more accessible)
 - [x] multi-gpu (default behavior, using `cuda:0` for `text_model` and `cuda:1` for `sr_group`)
-- [ ] model parallel. It seems that `--model-parallel-size` from SwissArmyTransformer doesn't work out-of-box. 
+- [ ] model parallel: it seems that `--model-parallel-size` from SwissArmyTransformer doesn't work out-of-the-box. 
 
 Tested with RTX3090 for full stages (text-to-image + SR pipeline + max-inference-batch-size=8).
 
