@@ -71,6 +71,8 @@ class DirectSuperResolution:
         self.strategy = IterativeEntfilterStrategy(invalid_slices,
             temperature=args.temp_all_dsr, topk=args.topk_dsr, temperature2=args.temp_cluster_dsr) # temperature not used
         self.max_bz = max_bz
+        if not args.single_gpu:
+            self.strategy.cluster_labels = self.strategy.cluster_labels.cuda(1)
     
     def _restore_transformer_from_cpu(self, non_blocking=False):
         for k, v in self.model.named_parameters():
