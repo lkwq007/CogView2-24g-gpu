@@ -26,6 +26,7 @@ class PatchCompletion:
         self.base_comp = BaseCompletion(model, strategy, log_attention_weight, max_inference_batch_size)
         self.srg = srg
         self.device = model.parameters().__next__().device
+        self.args=srg.args
 
     @staticmethod
     def _surrounding_box_crop(orig_mask):
@@ -52,6 +53,11 @@ class PatchCompletion:
         return (h0, w0, h0+lenm, w0+lenm), orig_mask[h0:h0+lenm, w0:w0+lenm], inner_box
 
     def __call__(self, image, orig_mask, text, batch_size=1):
+        if self.args.single_gpu:
+            self.srg.dsr.model.cpu()
+            self.srg.itersr.model.cpu()
+            torch.cuda.empty_cache()
+            self.model.transformer.cuda()
         if isinstance(image, str):
             image = read_image(image).to(self.device)
             tr = transforms.Compose([
@@ -77,6 +83,11 @@ class PatchCompletion:
                 transformed_crop = icetk.decode(image_ids=comp_token)
                 transformed_crops.append(F.interpolate(transformed_crop, size=h1-h0))
         else: # need sr
+            if self.args.single_gpu:
+                self.model.transformer.cpu()
+                torch.cuda.empty_cache()
+                self.srg.dsr.model.cuda()
+                self.srg.itersr.model.cuda()
             # (1) dsr the base_comp results
             if len(txt_tokens.shape) == 1:
                 txt_tokens = txt_tokens.unsqueeze(0).expand(batch_size, txt_tokens.shape[-1])

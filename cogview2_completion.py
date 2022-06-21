@@ -55,6 +55,8 @@ def main(args):
     strategy = CoglmStrategy(invalid_slices,
                             temperature=args.temp_all_gen, top_k=args.topk_gen, top_k_cluster=args.temp_cluster_gen)
     from sr_pipeline import SRGroup 
+    if args.single_gpu:
+        model.transformer.cpu()
     srg = SRGroup(args)
     from comp_pipeline import BaseCompletion, PatchCompletion, cord2mask
     comp = PatchCompletion(model, strategy, srg, log_attention_weight=1.4)
@@ -160,6 +162,7 @@ def get_recipe(name):
 
 if __name__ == "__main__":
     py_parser = argparse.ArgumentParser(add_help=False)
+    py_parser.add_argument('--single-gpu', action="store_true")
 
     py_parser.add_argument('--style', type=str, default='none', 
         choices=['none', 'mainbody', 'photo', 'flat', 'comics', 'oil', 'sketch', 'isometric', 'chinese', 'watercolor'])
