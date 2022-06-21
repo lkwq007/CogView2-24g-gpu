@@ -18,6 +18,7 @@ import torch.nn.functional as F
 from SwissArmyTransformer.resources import auto_create
 from .direct_sr import DirectSuperResolution
 from .iterative_sr import IterativeSuperResolution
+from icetk import icetk as tokenizer
 
 class SRGroup:
     def __init__(self, args, home_path=None,):
@@ -27,6 +28,7 @@ class SRGroup:
         itersr = IterativeSuperResolution(args, itersr_path, shared_transformer=dsr.model.transformer)
         self.dsr = dsr
         self.itersr = itersr
+        self.args=args
 
     def sr_base(self, img_tokens, txt_tokens):
         assert img_tokens.shape[-1] == 400 and len(img_tokens.shape) == 2
@@ -34,8 +36,22 @@ class SRGroup:
         txt_len = txt_tokens.shape[-1]
         if len(txt_tokens.shape) == 1:
             txt_tokens = txt_tokens.unsqueeze(0).expand(batch_size, txt_len)
+        if not self.args.single_gpu:
+            txt_tokens=txt_tokens.cuda(1)
+            img_tokens=img_tokens.cuda(1)
+            # avoid cuda error
+            tokenizer.image_tokenizer.model.cuda(1)
+            tokenizer.device=torch.device("cuda:1")
+            tokenizer.image_tokenizer.device=torch.device("cuda:1")
+            torch.cuda.set_device(1)
         sred_tokens = self.dsr(txt_tokens, img_tokens)
         iter_tokens = self.itersr(txt_tokens, sred_tokens[:, -3600:].clone())
+        if not self.args.single_gpu:
+            iter_tokens=iter_tokens.cuda(0)
+            tokenizer.image_tokenizer.model.cuda(0)
+            tokenizer.device=torch.device("cuda:0")
+            tokenizer.image_tokenizer.device=torch.device("cuda:0")
+            torch.cuda.set_device(0)
         return iter_tokens[-batch_size:]
     
     # def sr_patch(self, img_tokens, txt_tokens):

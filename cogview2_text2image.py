@@ -53,11 +53,18 @@ def main(args):
     strategy = CoglmStrategy(invalid_slices,
                             temperature=args.temp_all_gen, top_k=args.topk_gen, top_k_cluster=args.temp_cluster_gen)
     
+    if args.single_gpu:
+        text_model.transformer.cpu()
     from sr_pipeline import SRGroup 
     if not args.only_first_stage:
         srg = SRGroup(args)
         
     def process(raw_text):
+        if args.single_gpu:
+            srg.dsr.model.cpu()
+            srg.itersr.model.cpu()
+            torch.cuda.empty_cache()
+            text_model.transformer.cuda()
         if args.with_id:
             query_id, raw_text = raw_text.split('\t')
         print('raw text: ', raw_text)
@@ -130,6 +137,12 @@ def main(args):
                 decoded_img = torch.nn.functional.interpolate(decoded_img, size=(480, 480))
                 imgs.append(decoded_img) # only the last image (target)
         if not args.only_first_stage: # sr
+            if args.single_gpu:
+                text_model.transformer.cpu()
+                # avoid oom
+                torch.cuda.empty_cache()
+                srg.dsr.model.cuda()
+                srg.itersr.model.cuda()
             iter_tokens = srg.sr_base(output_tokens[:, -400:], seq[:txt_len])
             for seq in iter_tokens:
                 decoded_img = tokenizer.decode(image_ids=seq[-3600:])
@@ -221,6 +234,8 @@ def get_recipe(name):
 
 if __name__ == "__main__":
     py_parser = argparse.ArgumentParser(add_help=False)
+    # arg for single gpu
+    py_parser.add_argument('--single-gpu', action="store_true")
     py_parser.add_argument('--img-size', type=int, default=160)
     py_parser.add_argument('--only-first-stage', action='store_true')
     py_parser.add_argument('--inverse-prompt', action='store_true')
