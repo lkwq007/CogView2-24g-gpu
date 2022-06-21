@@ -91,6 +91,15 @@ class PatchCompletion:
             # (1) dsr the base_comp results
             if len(txt_tokens.shape) == 1:
                 txt_tokens = txt_tokens.unsqueeze(0).expand(batch_size, txt_tokens.shape[-1])
+            if not self.args.single_gpu:
+                txt_tokens = txt_tokens.cuda(1)
+                selected_base_comp_tokens = selected_base_comp_tokens.cuda(1)
+                crop_image = crop_image.cuda(1)
+                crop_mask = crop_mask.cuda(1)
+                icetk.image_tokenizer.model.cuda(1)
+                icetk.device=torch.device("cuda:1")
+                icetk.image_tokenizer.device=torch.device("cuda:1")
+                torch.cuda.set_device(1)
             dsred_tokens = self.srg.dsr(txt_tokens, selected_base_comp_tokens) # [bz, 3600]
             # (2) upsample to 480 and tokenize the crop, maybe blured but conherence is more important
             upsampled_crop = F.interpolate(crop_image.unsqueeze(0), size=480, mode='bilinear')
@@ -105,6 +114,12 @@ class PatchCompletion:
                 transformed_crop = icetk.decode(image_ids=comp_token)
                 transformed_crops.append(F.interpolate(transformed_crop, size=h1-h0))
         transformed_crops = torch.cat(transformed_crops, dim=0)
+        if not self.args.single_gpu:
+            transformed_crops=transformed_crops.cuda(0)
+            icetk.image_tokenizer.model.cuda(0)
+            icetk.device=torch.device("cuda:0")
+            icetk.image_tokenizer.device=torch.device("cuda:0")
+            torch.cuda.set_device(0)
         # find the position of inner box in the crop
         h0i, w0i, h1i, w1i = inner_box
         h0i -= h0; h1i -= h0; w0i -= w0; w1i -= w0
