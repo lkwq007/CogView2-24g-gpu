@@ -46,6 +46,7 @@ class IterativeSuperResolution:
         
         load_checkpoint(model, args) # on cpu
         model.eval()
+        self.model = model
         # if not args.single_gpu:
         #     self.model = model.cuda(1)
         # else:
