@@ -158,7 +158,8 @@ def get_model(args, model_cls):
         model.half()
     elif args.bf16:
         model.bfloat16()
-    model.cuda(torch.cuda.current_device())
+    # shall not move to gpu
+    # model.cuda(torch.cuda.current_device())
 
     return model
 

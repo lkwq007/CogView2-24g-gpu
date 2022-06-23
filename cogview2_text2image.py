@@ -53,18 +53,29 @@ def main(args):
     strategy = CoglmStrategy(invalid_slices,
                             temperature=args.temp_all_gen, top_k=args.topk_gen, top_k_cluster=args.temp_cluster_gen)
     
-    if args.single_gpu:
-        text_model.transformer.cpu()
+    # if args.single_gpu:
+        # text_model.transformer.cpu()
+    # 48 layers, so we can cut in half
+    half_num=len(text_model.transformer.layers)//2
+    empty_lst=torch.nn.ModuleList([])
+    lst=text_model.transformer.layers
+    text_model.transformer.layers=empty_lst
+    text_model.transformer.cuda()
+    text_model.transformer.layers=lst
+    device=torch.device("cuda:0")
+    for i in range(half_num):
+        text_model.transformer.layers[i].to(device,non_blocking=True)
     from sr_pipeline import SRGroup 
     if not args.only_first_stage:
         srg = SRGroup(args)
         
     def process(raw_text):
         if args.single_gpu:
-            srg.dsr.model.cpu()
-            srg.itersr.model.cpu()
-            torch.cuda.empty_cache()
-            text_model.transformer.cuda()
+            # srg.dsr.model.cpu()
+            # srg.itersr.model.cpu()
+            pass
+            # torch.cuda.empty_cache()
+            # text_model.transformer.cuda()
         if args.with_id:
             query_id, raw_text = raw_text.split('\t')
         print('raw text: ', raw_text)
@@ -138,11 +149,12 @@ def main(args):
                 imgs.append(decoded_img) # only the last image (target)
         if not args.only_first_stage: # sr
             if args.single_gpu:
-                text_model.transformer.cpu()
+                # text_model.transformer.cpu()
                 # avoid oom
-                torch.cuda.empty_cache()
-                srg.dsr.model.cuda()
-                srg.itersr.model.cuda()
+                pass
+                # torch.cuda.empty_cache()
+                # srg.dsr.model.cuda()
+                # srg.itersr.model.cuda()
             iter_tokens = srg.sr_base(output_tokens[:, -400:], seq[:txt_len])
             for seq in iter_tokens:
                 decoded_img = tokenizer.decode(image_ids=seq[-3600:])

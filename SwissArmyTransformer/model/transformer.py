@@ -510,6 +510,10 @@ class BaseTransformer(torch.nn.Module):
                 l += chunk_length
         else:
             output_this_layer = []
+            cuda_device=torch.device("cuda:0")
+            cpu_device=torch.device("cpu")
+            half_num=len(self.layers)//2
+            total_num=len(self.layers)
             for i, layer in enumerate(self.layers):
                 args = [hidden_states, attention_mask]
 
@@ -531,6 +535,8 @@ class BaseTransformer(torch.nn.Module):
                 if output_hidden_states:
                     output_this_layer['hidden_states'] = hidden_states
                 output_per_layers.append(output_this_layer)
+                self.layers[i].to(cpu_device,non_blocking=True)
+                self.layers[(i+half_num)%total_num].to(cuda_device,non_blocking=True)
 
         # Final layer norm.
         if self.use_final_layernorm:
