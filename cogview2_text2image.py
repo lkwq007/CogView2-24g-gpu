@@ -61,7 +61,10 @@ def main(args):
     def move_to_cpu(this_model):
         this_model.cpu()
     def move_to_gpu(this_model):
-        half_num=len(this_model.layers)//2
+        if not this_model.flag:
+            this_model.cuda()
+            return
+        half_num=len(this_model.layers)//this_model.split_factor
         empty_lst=torch.nn.ModuleList([])
         lst=this_model.layers
         this_model.layers = empty_lst
@@ -70,9 +73,13 @@ def main(args):
         for i in range(half_num):
             this_model.layers[i].to(cuda_device, non_blocking=True)
     from sr_pipeline import SRGroup 
+    text_model.transformer.flag=True
+    text_model.transformer.split_factor=2
     if not args.only_first_stage:
         move_to_cpu(text_model.transformer)
         srg = SRGroup(args)
+        srg.dsr.model.transformer.flag=True
+        srg.dsr.model.transformer.split_factor=4
         
     def process(raw_text):
         if args.single_gpu:
@@ -157,6 +164,7 @@ def main(args):
                 move_to_cpu(text_model.transformer)
                 # avoid oom
                 torch.cuda.empty_cache()
+                # print(torch.cuda.memory_summary())
                 sr_transformer=srg.dsr.model.transformer
                 srg.dsr.model.transformer=None
                 srg.itersr.model.transformer=None
@@ -166,7 +174,7 @@ def main(args):
                 srg.dsr.model.transformer=sr_transformer
                 srg.itersr.model.transformer=sr_transformer
                 # move_to_gpu(srg.itersr.model.transformer)
-
+            
             iter_tokens = srg.sr_base(output_tokens[:, -400:], seq[:txt_len])
             for seq in iter_tokens:
                 decoded_img = tokenizer.decode(image_ids=seq[-3600:])

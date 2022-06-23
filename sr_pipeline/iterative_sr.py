@@ -53,7 +53,7 @@ class IterativeSuperResolution:
         #     self.model = model.cuda()
 
         # save cpu weights
-        self.saved_weights = dict((k,v.cpu()) 
+        self.saved_weights = dict((k,v.clone()) 
             for k, v in model.named_parameters()
             if 'transformer' in k
         )
