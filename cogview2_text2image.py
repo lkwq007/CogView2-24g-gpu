@@ -56,26 +56,30 @@ def main(args):
     # if args.single_gpu:
         # text_model.transformer.cpu()
     # 48 layers, so we can cut in half
-    half_num=len(text_model.transformer.layers)//2
-    empty_lst=torch.nn.ModuleList([])
-    lst=text_model.transformer.layers
-    text_model.transformer.layers=empty_lst
-    text_model.transformer.cuda()
-    text_model.transformer.layers=lst
-    device=torch.device("cuda:0")
-    for i in range(half_num):
-        text_model.transformer.layers[i].to(device,non_blocking=True)
+    cuda_device = torch.device("cuda:0")
+    cpu_device = torch.device("cpu")
+    def move_to_cpu(this_model):
+        this_model.cpu()
+    def move_to_gpu(this_model):
+        half_num=len(this_model.layers)//2
+        empty_lst=torch.nn.ModuleList([])
+        lst=this_model.layers
+        this_model.layers = empty_lst
+        this_model.cuda()
+        this_model.layers = lst
+        for i in range(half_num):
+            this_model.layers[i].to(cuda_device, non_blocking=True)
     from sr_pipeline import SRGroup 
     if not args.only_first_stage:
+        move_to_cpu(text_model.transformer)
         srg = SRGroup(args)
         
     def process(raw_text):
         if args.single_gpu:
-            # srg.dsr.model.cpu()
-            # srg.itersr.model.cpu()
-            pass
-            # torch.cuda.empty_cache()
-            # text_model.transformer.cuda()
+            move_to_cpu(srg.dsr.model)
+            move_to_cpu(srg.itersr.model)
+            torch.cuda.empty_cache()
+            move_to_gpu(text_model.transformer)
         if args.with_id:
             query_id, raw_text = raw_text.split('\t')
         print('raw text: ', raw_text)
@@ -150,11 +154,19 @@ def main(args):
         if not args.only_first_stage: # sr
             if args.single_gpu:
                 # text_model.transformer.cpu()
+                move_to_cpu(text_model.transformer)
                 # avoid oom
-                pass
-                # torch.cuda.empty_cache()
-                # srg.dsr.model.cuda()
-                # srg.itersr.model.cuda()
+                torch.cuda.empty_cache()
+                sr_transformer=srg.dsr.model.transformer
+                srg.dsr.model.transformer=None
+                srg.itersr.model.transformer=None
+                srg.dsr.model.cuda()
+                srg.itersr.model.cuda()
+                move_to_gpu(sr_transformer)
+                srg.dsr.model.transformer=sr_transformer
+                srg.itersr.model.transformer=sr_transformer
+                # move_to_gpu(srg.itersr.model.transformer)
+
             iter_tokens = srg.sr_base(output_tokens[:, -400:], seq[:txt_len])
             for seq in iter_tokens:
                 decoded_img = tokenizer.decode(image_ids=seq[-3600:])

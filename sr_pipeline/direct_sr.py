@@ -55,10 +55,10 @@ class DirectSuperResolution:
         
         load_checkpoint(model, args) # on cpu
         model.eval()
-        if not args.single_gpu:
-            self.model = model.cuda(1)
-        else:
-            self.model = model.cuda()
+        # if not args.single_gpu:
+        #     self.model = model.cuda(1)
+        # else:
+        #     self.model = model.cuda()
 
         # save cpu weights
         self.saved_weights = dict((k,v.cpu()) 
