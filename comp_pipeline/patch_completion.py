@@ -53,11 +53,31 @@ class PatchCompletion:
         return (h0, w0, h0+lenm, w0+lenm), orig_mask[h0:h0+lenm, w0:w0+lenm], inner_box
 
     def __call__(self, image, orig_mask, text, batch_size=1):
+        cuda_device = torch.device("cuda:0")
+        cpu_device = torch.device("cpu")
+        def move_to_cpu(this_model):
+            this_model.cpu()
+        def move_to_gpu(this_model):
+            if not this_model.flag:
+                this_model.cuda()
+                return
+            part_num = len(this_model.layers)//this_model.split_factor
+            empty_lst = torch.nn.ModuleList([])
+            lst = this_model.layers
+            this_model.layers = empty_lst
+            this_model.cuda()
+            this_model.layers = lst
+            for i in range(part_num):
+                this_model.layers[i].to(cuda_device, non_blocking=True)
         if self.args.single_gpu:
-            self.srg.dsr.model.cpu()
-            self.srg.itersr.model.cpu()
+            move_to_cpu(self.srg.dsr.model)
+            move_to_cpu(self.srg.itersr.model)
             torch.cuda.empty_cache()
-            self.base_comp.model.transformer.cuda()
+            move_to_gpu(self.base_comp.model.transformer)
+            # self.srg.dsr.model.cpu()
+            # self.srg.itersr.model.cpu()
+            # torch.cuda.empty_cache()
+            # self.base_comp.model.transformer.cuda()
         if isinstance(image, str):
             image = read_image(image).to(self.device)
             tr = transforms.Compose([
@@ -84,10 +104,20 @@ class PatchCompletion:
                 transformed_crops.append(F.interpolate(transformed_crop, size=h1-h0))
         else: # need sr
             if self.args.single_gpu:
-                self.base_comp.model.transformer.cpu()
+                move_to_cpu(self.base_comp.model.transformer)
                 torch.cuda.empty_cache()
+                sr_transformer=self.srg.dsr.model.transformer
+                self.srg.dsr.model.transformer=None
+                self.srg.itersr.model.transformer=None
                 self.srg.dsr.model.cuda()
                 self.srg.itersr.model.cuda()
+                move_to_gpu(sr_transformer)
+                self.srg.dsr.model.transformer=sr_transformer
+                self.srg.itersr.model.transformer=sr_transformer
+                # self.base_comp.model.transformer.cpu()
+                # torch.cuda.empty_cache()
+                # self.srg.dsr.model.cuda()
+                # self.srg.itersr.model.cuda()
             # (1) dsr the base_comp results
             if len(txt_tokens.shape) == 1:
                 txt_tokens = txt_tokens.unsqueeze(0).expand(batch_size, txt_tokens.shape[-1])

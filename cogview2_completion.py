@@ -55,9 +55,19 @@ def main(args):
     strategy = CoglmStrategy(invalid_slices,
                             temperature=args.temp_all_gen, top_k=args.topk_gen, top_k_cluster=args.temp_cluster_gen)
     from sr_pipeline import SRGroup 
-    if args.single_gpu:
-        model.transformer.cpu()
+    # if args.single_gpu:
+        # model.transformer.cpu()
+
+    total_memory = torch.cuda.get_device_properties(0).total_memory//(1024**3)
+
+
+    # from sr_pipeline import SRGroup
+    text_model_split = total_memory<=12
+    model.transformer.flag = text_model_split
+    model.transformer.split_factor = 2 if text_model_split else 1
     srg = SRGroup(args)
+    srg.dsr.model.transformer.flag = True
+    srg.dsr.model.transformer.split_factor = 4
     from comp_pipeline import BaseCompletion, PatchCompletion, cord2mask
     comp = PatchCompletion(model, strategy, srg, log_attention_weight=1.4)
 
@@ -162,7 +172,9 @@ def get_recipe(name):
 
 if __name__ == "__main__":
     py_parser = argparse.ArgumentParser(add_help=False)
-    py_parser.add_argument('--single-gpu', action="store_true")
+    # py_parser.add_argument('--single-gpu', action="store_true")
+    py_parser.add_argument('--multi-gpu', action="store_false", dest="single_gpu")
+
 
     py_parser.add_argument('--style', type=str, default='none', 
         choices=['none', 'mainbody', 'photo', 'flat', 'comics', 'oil', 'sketch', 'isometric', 'chinese', 'watercolor'])
