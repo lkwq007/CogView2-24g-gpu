@@ -53,36 +53,40 @@ def main(args):
     strategy = CoglmStrategy(invalid_slices,
                             temperature=args.temp_all_gen, top_k=args.topk_gen, top_k_cluster=args.temp_cluster_gen)
     
+    
     # if args.single_gpu:
         # text_model.transformer.cpu()
     # 48 layers, so we can cut in half
     cuda_device = torch.device("cuda:0")
     cpu_device = torch.device("cpu")
+    total_memory = torch.cuda.get_device_properties(0).total_memory//(1024**3)
+
     def move_to_cpu(this_model):
         this_model.cpu()
     def move_to_gpu(this_model):
         if not this_model.flag:
             this_model.cuda()
             return
-        half_num=len(this_model.layers)//this_model.split_factor
-        empty_lst=torch.nn.ModuleList([])
-        lst=this_model.layers
+        part_num = len(this_model.layers)//this_model.split_factor
+        empty_lst = torch.nn.ModuleList([])
+        lst = this_model.layers
         this_model.layers = empty_lst
         this_model.cuda()
         this_model.layers = lst
-        for i in range(half_num):
+        for i in range(part_num):
             this_model.layers[i].to(cuda_device, non_blocking=True)
-    from sr_pipeline import SRGroup 
-    text_model.transformer.flag=True
-    text_model.transformer.split_factor=2
+    from sr_pipeline import SRGroup
+    text_model_split = total_memory<=12
+    text_model.transformer.flag = text_model_split
+    text_model.transformer.split_factor = 2 if text_model_split else 1
     if not args.only_first_stage:
         move_to_cpu(text_model.transformer)
         srg = SRGroup(args)
-        srg.dsr.model.transformer.flag=True
-        srg.dsr.model.transformer.split_factor=4
+        srg.dsr.model.transformer.flag = True
+        srg.dsr.model.transformer.split_factor = 4
         
     def process(raw_text):
-        if args.single_gpu:
+        if args.single_gpu and not args.only_first_stage:
             move_to_cpu(srg.dsr.model)
             move_to_cpu(srg.itersr.model)
             torch.cuda.empty_cache()
@@ -267,7 +271,9 @@ def get_recipe(name):
 if __name__ == "__main__":
     py_parser = argparse.ArgumentParser(add_help=False)
     # arg for single gpu
-    py_parser.add_argument('--single-gpu', action="store_true")
+    # py_parser.add_argument('--single-gpu', action="store_true")
+    # only support single_gpu here
+    py_parser.add_argument('--multi-gpu', action="store_false", dest="single_gpu")
     py_parser.add_argument('--img-size', type=int, default=160)
     py_parser.add_argument('--only-first-stage', action='store_true')
     py_parser.add_argument('--inverse-prompt', action='store_true')
