@@ -1,13 +1,22 @@
-# CogView2-24g-gpu
+# CogView2-low-vRAM
 
 
-Inelegant hack for GPUs with 24GB vRAM. 
+## Hack for GPUs with 24GB vRAM 
 
 - [x] single-gpu with `torch.device("cpu")` as swap (run with `--single-gpu`, slower but more accessible)
 - [x] multi-gpu (default behavior, using `cuda:0` for `text_model` and `cuda:1` for `sr_group`)
 - [ ] model parallel: it seems that `--model-parallel-size` from SwissArmyTransformer doesn't work out-of-the-box. 
 
 Tested with RTX3090 for full stages (text-to-image + SR pipeline + max-inference-batch-size=8).
+
+## Hack for GPUs with 12/16GB vRAM
+
+Check branch [12g](https://github.com/lkwq007/CogView2-low-vram/tree/12g)
+
+- [x] single-gpu (default behavior, splitting model and loading weights dynamically. note that it takes about 10 minutes to finish the first stage on a 12G GPU due to auto-regressive generation; works fine with a 16G GPU)
+- [ ] multi-gpu as pipeline?
+
+Tested with TITAN V for full stages (text-to-image + SR pipeline + max-inference-batch-size=2).
 
 *"Cat drinking coffee"*:
 
