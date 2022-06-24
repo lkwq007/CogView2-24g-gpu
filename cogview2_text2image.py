@@ -76,14 +76,15 @@ def main(args):
         for i in range(part_num):
             this_model.layers[i].to(cuda_device, non_blocking=True)
     from sr_pipeline import SRGroup
-    text_model_split = total_memory<=12
-    text_model.transformer.flag = text_model_split
-    text_model.transformer.split_factor = 2 if text_model_split else 1
+    text_model_split = 2 if total_memory<=12 else 1
+    sr_group_split = 4 if total_memory<=20 else 1
+    text_model.transformer.flag = (text_model_split!=1)
+    text_model.transformer.split_factor = text_model_split
     if not args.only_first_stage:
         move_to_cpu(text_model.transformer)
         srg = SRGroup(args)
-        srg.dsr.model.transformer.flag = True
-        srg.dsr.model.transformer.split_factor = 4
+        srg.dsr.model.transformer.flag = (sr_group_split!=1)
+        srg.dsr.model.transformer.split_factor = sr_group_split
         
     def process(raw_text):
         if args.single_gpu and not args.only_first_stage:
@@ -274,6 +275,7 @@ if __name__ == "__main__":
     # py_parser.add_argument('--single-gpu', action="store_true")
     # only support single_gpu here
     py_parser.add_argument('--multi-gpu', action="store_false", dest="single_gpu")
+    py_parser.add_argument('--low-ram', action="store_true")
     py_parser.add_argument('--img-size', type=int, default=160)
     py_parser.add_argument('--only-first-stage', action='store_true')
     py_parser.add_argument('--inverse-prompt', action='store_true')

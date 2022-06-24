@@ -174,7 +174,7 @@ if __name__ == "__main__":
     py_parser = argparse.ArgumentParser(add_help=False)
     # py_parser.add_argument('--single-gpu', action="store_true")
     py_parser.add_argument('--multi-gpu', action="store_false", dest="single_gpu")
-
+    py_parser.add_argument('--low-ram', action="store_true")
 
     py_parser.add_argument('--style', type=str, default='none', 
         choices=['none', 'mainbody', 'photo', 'flat', 'comics', 'oil', 'sketch', 'isometric', 'chinese', 'watercolor'])
