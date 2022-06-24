@@ -25,10 +25,14 @@ class SRGroup:
         dsr_path = auto_create('cogview2-dsr', path=home_path)
         itersr_path = auto_create('cogview2-itersr', path=home_path)
         dsr = DirectSuperResolution(args, dsr_path)
-        itersr = IterativeSuperResolution(args, itersr_path, shared_transformer=dsr.model.transformer)
+        if args.low_ram:
+            itersr = dsr
+        else:
+            itersr = IterativeSuperResolution(args, itersr_path, shared_transformer=dsr.model.transformer)
         self.dsr = dsr
         self.itersr = itersr
-        self.args=args
+        self.itersr_path = itersr_path
+        self.args = args
 
     def sr_base(self, img_tokens, txt_tokens):
         assert img_tokens.shape[-1] == 400 and len(img_tokens.shape) == 2
@@ -45,6 +49,8 @@ class SRGroup:
             tokenizer.image_tokenizer.device=torch.device("cuda:1")
             torch.cuda.set_device(1)
         sred_tokens = self.dsr(txt_tokens, img_tokens)
+        if self.args.low_ram:
+            self.itersr = IterativeSuperResolution(self.args, self.itersr_path, shared_transformer=self.dsr.model.transformer)
         iter_tokens = self.itersr(txt_tokens, sred_tokens[:, -3600:].clone())
         if not self.args.single_gpu:
             iter_tokens=iter_tokens.cuda(0)

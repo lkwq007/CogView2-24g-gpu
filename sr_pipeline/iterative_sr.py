@@ -51,12 +51,13 @@ class IterativeSuperResolution:
         #     self.model = model.cuda(1)
         # else:
         #     self.model = model.cuda()
-
+        self.args = args
         # save cpu weights
-        self.saved_weights = dict((k,v.clone()) 
-            for k, v in model.named_parameters()
-            if 'transformer' in k
-        )
+        if not args.low_ram:
+            self.saved_weights = dict((k,v.clone()) 
+                for k, v in model.named_parameters()
+                if 'transformer' in k
+            )
         
         invalid_slices = [slice(tokenizer.num_image_tokens, None)]
     
@@ -85,7 +86,8 @@ class IterativeSuperResolution:
                 new_image_tokens.append(big_img2)
             image_tokens = torch.stack(new_image_tokens)
         print('Converting Itersr model...')
-        self._restore_transformer_from_cpu()
+        if not self.args.low_ram:
+            self._restore_transformer_from_cpu()
         model = self.model
         print('iterative super-resolution...')
         output_list = []

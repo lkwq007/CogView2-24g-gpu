@@ -60,12 +60,13 @@ class DirectSuperResolution:
         #     self.model = model.cuda(1)
         # else:
         #     self.model = model.cuda()
-
+        self.args = args
         # save cpu weights
-        self.saved_weights = dict((k,v.clone()) 
-            for k, v in model.named_parameters()
-            if 'transformer' in k
-        )
+        if not args.low_ram:
+            self.saved_weights = dict((k,v.clone()) 
+                for k, v in model.named_parameters()
+                if 'transformer' in k
+            )
         
         invalid_slices = [slice(tokenizer.num_image_tokens, None)]
     
@@ -110,7 +111,8 @@ class DirectSuperResolution:
         seq = torch.cat((text_tokens,image_tokens), dim=1)
         seq1 = torch.tensor([tokenizer['<start_of_image>']]*3601, device=image_tokens.device).unsqueeze(0).expand(text_tokens.shape[0], -1)
         print('Converting Dsr model...')
-        self._restore_transformer_from_cpu()
+        if not self.args.low_ram:
+            self._restore_transformer_from_cpu()
         model = self.model
         print('Direct super-resolution...')
         output_list = []
